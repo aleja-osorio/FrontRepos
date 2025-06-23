@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
+import Modal from '../../components/ui/Modal';
+import ProductForm from '../../components/forms/ProductForm';
+import type { ProductFormData } from '../../types';
 
 interface Product {
   id: string;
@@ -19,6 +22,7 @@ const Products: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     // Simular carga de productos
@@ -76,7 +80,26 @@ const Products: React.FC = () => {
     loadProducts();
   }, []);
 
-  const categories = ['all', 'Hamburguesas', 'Pizzas', 'Ensaladas', 'Bebidas'];
+  const handleCreateProduct = (data: ProductFormData) => {
+    console.log('Creating product with data:', data);
+    const newProduct: Product = {
+      id: (products.length + 1).toString(), // ID simple para el mock
+      ...data,
+      status: 'active',
+    };
+    setProducts(prevProducts => [newProduct, ...prevProducts]);
+    setIsModalOpen(false); // Cerrar modal después de crear
+  };
+
+  const handleOpenModal = () => {
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+  };
+
+  const categories = ['all', 'Hamburguesas', 'Pizzas', 'Ensaladas', 'Bebidas', 'Postres', 'Otros'];
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -107,7 +130,7 @@ const Products: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900">Productos</h1>
           <p className="text-gray-600">Gestiona tu catálogo de productos</p>
         </div>
-        <Button variant="primary">
+        <Button variant="primary" onClick={handleOpenModal}>
           <PlusIcon className="h-5 w-5 mr-2" />
           Nuevo Producto
         </Button>
@@ -212,12 +235,25 @@ const Products: React.FC = () => {
               : 'Comienza agregando tu primer producto'
             }
           </p>
-          <Button variant="primary">
+          <Button variant="primary" onClick={handleOpenModal}>
             <PlusIcon className="h-5 w-5 mr-2" />
             Agregar Producto
           </Button>
         </div>
       )}
+
+      {/* Create Product Modal */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        title="Crear Nuevo Producto"
+        size="lg"
+      >
+        <ProductForm
+          onSubmit={handleCreateProduct}
+          onCancel={handleCloseModal}
+        />
+      </Modal>
     </div>
   );
 };

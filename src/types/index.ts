@@ -143,4 +143,21 @@ export interface AppConfig {
   appName: string;
   version: string;
   environment: 'development' | 'production' | 'staging';
+}
+
+export interface ProductFormData {
+  name: string;
+  barcode: string;
+  price: number;
+  offerPrice?: number;
+  description: string;
+  category: string;
+  preparationTime?: number;
+  productType: 'simple' | 'compuesto';
+  includedItems?: Array<{
+    itemId: string;
+    itemName: string;
+    quantity: number;
+  }>;
+  image?: unknown;
 } 
