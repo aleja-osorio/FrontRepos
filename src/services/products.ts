@@ -1,5 +1,5 @@
 import { apiService } from './api';
-import type { Product, CreateProductData, UpdateProductData, ProductFilters } from '../types';
+import type { Product, CreateProductData, UpdateProductData, ProductFilters, ProductFormData } from '../types';
 
 export interface Product {
   id: string;
@@ -104,4 +104,24 @@ export const productService = {
       },
     });
   },
+};
+
+export const getProducts = async () => {
+  const res = await apiService.get('/products');
+  return res;
+};
+
+export const createProduct = async (data: ProductFormData) => {
+  const res = await apiService.post('/products', data);
+  return res;
+};
+
+export const updateProduct = async (id: string, data: ProductFormData) => {
+  const res = await apiService.put(`/products/${id}`, data);
+  return res;
+};
+
+export const deleteProduct = async (id: string) => {
+  const res = await apiService.delete(`/products/${id}`);
+  return res;
 }; 

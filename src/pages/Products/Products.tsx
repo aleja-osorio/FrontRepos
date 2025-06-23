@@ -5,6 +5,8 @@ import Input from '../../components/ui/Input';
 import Modal from '../../components/ui/Modal';
 import ProductForm from '../../components/forms/ProductForm';
 import type { ProductFormData } from '../../types';
+import { createProduct, getProducts, updateProduct, deleteProduct } from '../../services/products';
+import { createCategory, getCategories, updateCategory, deleteCategory } from '../../services/categories';
 
 interface Product {
   id: string;
@@ -23,72 +25,46 @@ const Products: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [categoryName, setCategoryName] = useState('');
+  const [editingCategory, setEditingCategory] = useState(null);
+
+  const fetchProducts = async () => {
+    setLoading(true);
+    try {
+      const data = await getProducts();
+      setProducts(data);
+    } catch (error) {
+      console.error('Error loading products:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const data = await getCategories();
+      setCategories(data);
+    } catch (error) {
+      console.error('Error loading categories:', error);
+    }
+  };
 
   useEffect(() => {
-    // Simular carga de productos
-    const loadProducts = async () => {
-      try {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const mockProducts: Product[] = [
-          {
-            id: '1',
-            name: 'Hamburguesa Clásica',
-            description: 'Hamburguesa con carne, lechuga, tomate y queso',
-            price: 8.50,
-            category: 'Hamburguesas',
-            stock: 25,
-            status: 'active',
-          },
-          {
-            id: '2',
-            name: 'Pizza Margherita',
-            description: 'Pizza con tomate, mozzarella y albahaca',
-            price: 12.00,
-            category: 'Pizzas',
-            stock: 15,
-            status: 'active',
-          },
-          {
-            id: '3',
-            name: 'Ensalada César',
-            description: 'Lechuga, crutones, parmesano y aderezo César',
-            price: 6.50,
-            category: 'Ensaladas',
-            stock: 8,
-            status: 'active',
-          },
-          {
-            id: '4',
-            name: 'Refresco Cola',
-            description: 'Refresco de cola 500ml',
-            price: 2.50,
-            category: 'Bebidas',
-            stock: 50,
-            status: 'active',
-          },
-        ];
-        
-        setProducts(mockProducts);
-      } catch (error) {
-        console.error('Error loading products:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadProducts();
+    fetchProducts();
   }, []);
 
-  const handleCreateProduct = (data: ProductFormData) => {
-    console.log('Creating product with data:', data);
-    const newProduct: Product = {
-      id: (products.length + 1).toString(), // ID simple para el mock
-      ...data,
-      status: 'active',
-    };
-    setProducts(prevProducts => [newProduct, ...prevProducts]);
-    setIsModalOpen(false); // Cerrar modal después de crear
+  const handleCreateProduct = async (data: ProductFormData) => {
+    try {
+      await createProduct(data);
+      alert('Producto creado exitosamente');
+      setIsModalOpen(false);
+      await fetchProducts();
+    } catch (error) {
+      alert('Error al crear el producto');
+      console.error(error);
+    }
   };
 
   const handleOpenModal = () => {
@@ -99,7 +75,28 @@ const Products: React.FC = () => {
     setIsModalOpen(false);
   };
 
-  const categories = ['all', 'Hamburguesas', 'Pizzas', 'Ensaladas', 'Bebidas', 'Postres', 'Otros'];
+  const handleOpenCategoryModal = async () => {
+    await fetchCategories();
+    setIsCategoryModalOpen(true);
+  };
+
+  const handleCloseCategoryModal = () => {
+    setIsCategoryModalOpen(false);
+    setCategoryName('');
+    setEditingCategory(null);
+  };
+
+  const handleCreateCategory = async (e) => {
+    e.preventDefault();
+    if (!categoryName.trim()) return;
+    try {
+      await createCategory({ name: categoryName });
+      setCategoryName('');
+      await fetchCategories();
+    } catch (error) {
+      alert('Error al crear la categoría');
+    }
+  };
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -108,9 +105,26 @@ const Products: React.FC = () => {
     return matchesSearch && matchesCategory;
   });
 
-  const handleDeleteProduct = (productId: string) => {
-    if (window.confirm('¿Estás seguro de que quieres eliminar este producto?')) {
-      setProducts(products.filter(p => p.id !== productId));
+  const handleEditProduct = async (id: string, data: ProductFormData) => {
+    try {
+      await updateProduct(id, data);
+      alert('Producto actualizado exitosamente');
+      await fetchProducts();
+    } catch (error) {
+      alert('Error al actualizar el producto');
+      console.error(error);
+    }
+  };
+
+  const handleDeleteProduct = async (id: string) => {
+    if (!window.confirm('¿Estás seguro de que quieres eliminar este producto?')) return;
+    try {
+      await deleteProduct(id);
+      alert('Producto eliminado exitosamente');
+      await fetchProducts();
+    } catch (error) {
+      alert('Error al eliminar el producto');
+      console.error(error);
     }
   };
 
@@ -139,7 +153,7 @@ const Products: React.FC = () => {
       {/* Filters */}
       <div className="card">
         <div className="card-body">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
             <div className="relative">
               <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
               <Input
@@ -149,17 +163,21 @@ const Products: React.FC = () => {
                 className="pl-10"
               />
             </div>
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="input"
-            >
-              {categories.map(category => (
-                <option key={category} value={category}>
-                  {category === 'all' ? 'Todas las categorías' : category}
-                </option>
-              ))}
-            </select>
+            <div className="flex items-center gap-2">
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="input"
+              >
+                <option value="all">Todas las categorías</option>
+                {categories.map(category => (
+                  <option key={category.id} value={category.id}>{category.name}</option>
+                ))}
+              </select>
+              <Button type="button" variant="outline" onClick={handleOpenCategoryModal}>
+                Gestionar categorías
+              </Button>
+            </div>
             <Button variant="outline" className="w-full">
               Filtrar
             </Button>
@@ -252,7 +270,63 @@ const Products: React.FC = () => {
         <ProductForm
           onSubmit={handleCreateProduct}
           onCancel={handleCloseModal}
+          onOpenCategoryModal={handleOpenCategoryModal}
+          categories={categories}
         />
+      </Modal>
+
+      {/* Category Modal */}
+      <Modal
+        isOpen={isCategoryModalOpen}
+        onClose={handleCloseCategoryModal}
+        title="Gestionar Categorías"
+        size="lg"
+      >
+        <form onSubmit={handleCreateCategory} className="flex gap-2 mb-4">
+          <Input
+            placeholder="Nueva categoría"
+            value={categoryName}
+            onChange={e => setCategoryName(e.target.value)}
+          />
+          <Button type="submit" variant="primary">Crear</Button>
+        </form>
+        <ul className="divide-y divide-gray-200">
+          {categories.map((cat) => (
+            <li key={cat.id} className="flex items-center justify-between py-2">
+              {editingCategory === cat.id ? (
+                <form
+                  className="flex gap-2 flex-1"
+                  onSubmit={async e => {
+                    e.preventDefault();
+                    await updateCategory(cat.id, { name: categoryName });
+                    setEditingCategory(null);
+                    setCategoryName('');
+                    await fetchCategories();
+                  }}
+                >
+                  <Input
+                    value={categoryName}
+                    onChange={e => setCategoryName(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button type="submit" variant="primary" size="sm">Guardar</Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setEditingCategory(null)}>Cancelar</Button>
+                </form>
+              ) : (
+                <>
+                  <span>{cat.name}</span>
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" size="sm" onClick={() => { setEditingCategory(cat.id); setCategoryName(cat.name); }}>Editar</Button>
+                    <Button type="button" variant="danger" size="sm" onClick={async () => {
+                      await deleteCategory(cat.id);
+                      await fetchCategories();
+                    }}>Eliminar</Button>
+                  </div>
+                </>
+              )}
+            </li>
+          ))}
+        </ul>
       </Modal>
     </div>
   );

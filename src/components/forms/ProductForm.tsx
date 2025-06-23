@@ -6,7 +6,7 @@ import Input from '../ui/Input';
 import Button from '../ui/Button';
 import type { ProductFormData } from '../../types';
 import Modal from '../ui/Modal';
-import { TrashIcon } from '@heroicons/react/24/outline';
+import { TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
 
 // Definir el esquema de validación con Yup
 const schema = yup.object().shape({
@@ -37,6 +37,8 @@ interface ProductFormProps {
   onCancel: () => void;
   initialData?: ProductFormData;
   isSubmitting?: boolean;
+  onOpenCategoryModal: () => void;
+  categories?: { id: string; name: string }[];
 }
 
 const TABS = [
@@ -52,7 +54,7 @@ const mockAvailableItems = [
     { id: '4', name: 'Agua Mineral' },
 ];
 
-const ProductForm: React.FC<ProductFormProps> = ({ onSubmit, onCancel, initialData, isSubmitting }) => {
+const ProductForm: React.FC<ProductFormProps> = ({ onSubmit, onCancel, initialData, isSubmitting, onOpenCategoryModal, categories }) => {
   const [activeTab, setActiveTab] = useState('info');
   const [isContentModalOpen, setIsContentModalOpen] = useState(false);
   const [contentName, setContentName] = useState('');
@@ -159,18 +161,21 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSubmit, onCancel, initialDa
               {errors.offerPrice && <p className="mt-1 text-sm text-red-600">{errors.offerPrice.message}</p>}
             </div>
           </div>
-          <div>
-            <label htmlFor="category" className="block text-sm font-medium text-gray-700">Categoría</label>
-            <select id="category" {...register('category')} className="input">
+          <div className="flex items-center gap-2">
+            <select id="category" {...register('category')} className="input flex-1">
               <option value="">Selecciona una categoría</option>
-              <option value="Hamburguesas">Hamburguesas</option>
-              <option value="Pizzas">Pizzas</option>
-              <option value="Ensaladas">Ensaladas</option>
-              <option value="Bebidas">Bebidas</option>
-              <option value="Postres">Postres</option>
-              <option value="Otros">Otros</option>
+              {categories && categories.map(cat => (
+                <option key={cat.id} value={cat.id}>{cat.name}</option>
+              ))}
             </select>
-            {errors.category && <p className="mt-1 text-sm text-red-600">{errors.category.message}</p>}
+            <button
+              type="button"
+              className="p-2 rounded-full bg-primary-600 text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              title="Agregar nueva categoría"
+              onClick={onOpenCategoryModal}
+            >
+              <PlusIcon className="h-5 w-5" />
+            </button>
           </div>
           <div>
             <label htmlFor="preparationTime" className="block text-sm font-medium text-gray-700">Tiempo de Preparación (minutos, opcional)</label>
