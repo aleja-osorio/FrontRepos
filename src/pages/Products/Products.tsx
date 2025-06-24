@@ -174,9 +174,6 @@ const Products: React.FC = () => {
                   <option key={category.id} value={category.id}>{category.name}</option>
                 ))}
               </select>
-              <Button type="button" variant="outline" onClick={handleOpenCategoryModal}>
-                Gestionar categorías
-              </Button>
             </div>
             <Button variant="outline" className="w-full">
               Filtrar

@@ -92,6 +92,11 @@ export const ROUTES = {
   ORDERS: '/orders',
   REPORTS: '/reports',
   SETTINGS: '/settings',
+  QUICK_ORDER: '/quick-order',
+  INVENTORY: '/inventory',
+  EXPENSES: '/expenses',
+  CLIENTS: '/clients',
+  CASHIER_SETTINGS: '/cashier-settings',
 } as const;
 
 // Configuración de colores para estados

@@ -40,3 +40,126 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Sidebar */
+.sidebar {
+  background: var(--color-blue);
+  color: var(--color-white);
+  width: 260px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.sidebar .sidebar-header {
+  font-size: 1.5rem;
+  font-weight: bold;
+  padding: 1.5rem 1rem;
+  color: var(--color-orange);
+  background: var(--color-blue);
+}
+.sidebar .sidebar-link {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1.25rem;
+  color: var(--color-white);
+  border-radius: 8px;
+  margin-bottom: 0.25rem;
+  font-weight: 500;
+  transition: background 0.2s, color 0.2s;
+}
+.sidebar .sidebar-link.active, .sidebar .sidebar-link:hover {
+  background: var(--color-orange);
+  color: var(--color-white);
+}
+
+/* Botones */
+.button-primary {
+  background: var(--color-blue);
+  color: var(--color-white);
+  border-radius: 8px;
+  font-weight: 600;
+  padding: 0.5rem 1.25rem;
+  border: none;
+  transition: background 0.2s;
+}
+.button-primary:hover {
+  background: var(--color-orange);
+}
+.button-outline {
+  background: var(--color-white);
+  color: var(--color-blue);
+  border: 2px solid var(--color-blue);
+  border-radius: 8px;
+  font-weight: 600;
+  padding: 0.5rem 1.25rem;
+  transition: background 0.2s, color 0.2s;
+}
+.button-outline:hover {
+  background: var(--color-blue);
+  color: var(--color-white);
+}
+
+/* Tarjetas y paneles */
+.card {
+  background: var(--color-white);
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(34, 40, 49, 0.06);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Tabla */
+.table {
+  width: 100%;
+  border-radius: 12px;
+  background: var(--color-white);
+  box-shadow: 0 1px 4px rgba(34, 40, 49, 0.04);
+  overflow: hidden;
+}
+.table th, .table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+}
+.table th {
+  background: var(--color-light-gray);
+  color: var(--color-dark-gray);
+  font-weight: 600;
+}
+.table tr {
+  border-bottom: 1px solid #eee;
+}
+.table tr:last-child {
+  border-bottom: none;
+}
+
+/* Badges de estado */
+.badge-pending {
+  background: var(--color-orange);
+  color: var(--color-white);
+  border-radius: 8px;
+  padding: 0.25rem 0.75rem;
+  font-weight: 600;
+  font-size: 0.95em;
+}
+.badge-inprogress {
+  background: var(--color-blue);
+  color: var(--color-white);
+  border-radius: 8px;
+  padding: 0.25rem 0.75rem;
+  font-weight: 600;
+  font-size: 0.95em;
+}
+.badge-completed {
+  background: var(--color-orange);
+  color: var(--color-white);
+  border-radius: 8px;
+  padding: 0.25rem 0.75rem;
+  font-weight: 600;
+  font-size: 0.95em;
+}
+
+/* Títulos */
+h1, h2, h3, h4, h5 {
+  color: var(--color-blue);
+  font-weight: bold;
+}

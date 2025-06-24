@@ -45,3 +45,33 @@
     @apply p-6;
   }
 }
+
+/* Paleta principal */
+:root {
+  --color-blue: #003F88;
+  --color-orange: #FF6F00;
+  --color-light-gray: #F5F5F5;
+  --color-dark-gray: #222831;
+  --color-white: #fff;
+}
+
+body {
+  background: var(--color-light-gray);
+  color: var(--color-dark-gray);
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+}
+
+/* Scrollbar y selección */
+::-webkit-scrollbar {
+  width: 8px;
+  background: var(--color-light-gray);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-blue);
+  border-radius: 4px;
+}
+
+::selection {
+  background: var(--color-orange);
+  color: var(--color-white);
+}
