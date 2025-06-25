@@ -55,6 +55,7 @@ export const productService = {
 
   // Obtener un producto por ID
   async getProductById(id: string): Promise<Product> {
+    console.log('Llamando a la API para obtener producto por ID:', id);
     return await apiService.get<Product>(`/products/${id}`);
   },
 
@@ -93,16 +94,23 @@ export const productService = {
     return await apiService.get<string[]>('/products/categories');
   },
 
-  // Subir imagen de producto
-  async uploadProductImage(productId: string, file: File): Promise<{ imageUrl: string }> {
+  // Subir imagen de producto (ajustado)
+  async uploadProductImage(file: File, productId?: string): Promise<{ imageUrl: string }> {
     const formData = new FormData();
-    formData.append('image', file);
-    
-    return await apiService.post<{ imageUrl: string }>(`/products/${productId}/image`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    formData.append('file', file);
+    if (productId) {
+      formData.append('productId', productId);
+    }
+    return await apiService.post<{ imageUrl: string }>(
+      '/upload/product-image',
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+  },
+
+  // Eliminar imagen de producto (nuevo)
+  async deleteProductImage(fileName: string): Promise<void> {
+    await apiService.delete(`/upload/image/${fileName}?subDirectory=products`);
   },
 };
 

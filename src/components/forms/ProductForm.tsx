@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -11,8 +11,8 @@ import { TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
 // Definir el esquema de validación con Yup
 const schema = yup.object().shape({
   name: yup.string().required('El nombre es requerido'),
-  barcode: yup.string().required('El código de barras es requerido'),
-  price: yup.number().typeError('El precio debe ser un número').required('El precio es requerido').min(0),
+  barcode: yup.string().notRequired(),
+  price: yup.number().typeError('El precio debe ser un número').notRequired().min(0),
   productType: yup.string().oneOf(['simple', 'compuesto']).required(),
   includedItems: yup.array().when('productType', {
     is: 'compuesto',
@@ -25,9 +25,20 @@ const schema = yup.object().shape({
     ).min(1, 'Debe agregar al menos un item al producto compuesto'),
     otherwise: schema => schema.notRequired(),
   }),
-  offerPrice: yup.number().typeError('El precio de oferta debe ser un número').min(0).notRequired(),
-  description: yup.string().required('La descripción es requerida'),
-  preparationTime: yup.number().typeError('El tiempo de preparación debe ser un número').integer().min(0).notRequired(),
+  offerPrice: yup
+    .number()
+    .typeError('El precio de oferta debe ser un número')
+    .min(0)
+    .transform((value, originalValue) => originalValue === '' ? undefined : value)
+    .notRequired(),
+  description: yup.string().notRequired(),
+  preparationTime: yup
+    .number()
+    .typeError('El tiempo de preparación debe ser un número')
+    .integer()
+    .min(0)
+    .transform((value, originalValue) => originalValue === '' ? undefined : value)
+    .notRequired(),
   category: yup.string().required('La categoría es requerida'),
   image: yup.mixed().notRequired(),
 });
@@ -54,6 +65,19 @@ const mockAvailableItems = [
     { id: '4', name: 'Agua Mineral' },
 ];
 
+// NUEVO: Tipos para opciones de producto
+interface ProductOptionValue {
+  id: string;
+  name: string;
+}
+interface ProductOptionGroup {
+  id: string;
+  name: string;
+  type: 'extraible' | 'complementaria';
+  values: ProductOptionValue[];
+  expanded: boolean;
+}
+
 const ProductForm: React.FC<ProductFormProps> = ({ onSubmit, onCancel, initialData, isSubmitting, onOpenCategoryModal, categories }) => {
   const [activeTab, setActiveTab] = useState('info');
   const [isContentModalOpen, setIsContentModalOpen] = useState(false);
@@ -63,13 +87,35 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSubmit, onCancel, initialDa
   const [selectedItemId, setSelectedItemId] = useState('');
   const [itemQuantity, setItemQuantity] = useState(1);
   
-  const { register, control, handleSubmit, formState: { errors }, setValue, watch } = useForm<ProductFormData>({
+  const { register, control, handleSubmit, formState: { errors }, setValue, watch, reset } = useForm<ProductFormData>({
     resolver: yupResolver(schema),
     defaultValues: initialData || {
       productType: 'simple',
       includedItems: [],
     },
   });
+
+  useEffect(() => {
+    if (initialData) {
+      console.log('ProductForm recibe initialData:', initialData);
+      reset(initialData);
+      // Inicializar optionGroups con los datos de clientOptions
+      if (Array.isArray(initialData.clientOptions)) {
+        setOptionGroups(
+          initialData.clientOptions.map((group, idx) => ({
+            id: String(idx + 1),
+            name: group.name,
+            type: group.type as 'extraible' | 'complementaria',
+            values: group.values.map((v, vIdx) => ({
+              id: String(vIdx + 1),
+              name: v.name,
+            })),
+            expanded: false,
+          }))
+        );
+      }
+    }
+  }, [initialData, reset]);
 
   const { fields, append, remove } = useFieldArray({
     control,
@@ -120,8 +166,114 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSubmit, onCancel, initialDa
     setIsContentModalOpen(false);
   };
 
+  // NUEVO: Estado para grupos y valores de opciones
+  const [optionGroups, setOptionGroups] = useState<ProductOptionGroup[]>([]);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [newGroupType, setNewGroupType] = useState<'extraible' | 'complementaria'>('complementaria');
+  const [groupError, setGroupError] = useState('');
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+  const [editingGroupName, setEditingGroupName] = useState('');
+  const [editingGroupType, setEditingGroupType] = useState<'extraible' | 'complementaria'>('complementaria');
+  const [newValueName, setNewValueName] = useState('');
+  const [valueError, setValueError] = useState('');
+  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
+  const [editingValueId, setEditingValueId] = useState<string | null>(null);
+  const [editingValueName, setEditingValueName] = useState('');
+
+  // NUEVO: Funciones para grupos
+  const handleAddGroup = () => {
+    if (!newGroupName.trim()) {
+      setGroupError('El nombre del grupo es obligatorio');
+      return;
+    }
+    setOptionGroups([
+      ...optionGroups,
+      { id: Date.now().toString(), name: newGroupName, type: newGroupType, values: [], expanded: true },
+    ]);
+    setNewGroupName('');
+    setNewGroupType('complementaria');
+    setGroupError('');
+  };
+  const handleDeleteGroup = (groupId: string) => {
+    setOptionGroups(optionGroups.filter(g => g.id !== groupId));
+    if (activeGroupId === groupId) setActiveGroupId(null);
+  };
+  const handleEditGroup = (groupId: string) => {
+    const group = optionGroups.find(g => g.id === groupId);
+    if (group) {
+      setEditingGroupId(groupId);
+      setEditingGroupName(group.name);
+      setEditingGroupType(group.type);
+    }
+  };
+  const handleSaveEditGroup = (groupId: string) => {
+    setOptionGroups(optionGroups.map(g => g.id === groupId ? { ...g, name: editingGroupName, type: editingGroupType } : g));
+    setEditingGroupId(null);
+    setEditingGroupName('');
+    setEditingGroupType('complementaria');
+  };
+  const handleToggleGroup = (groupId: string) => {
+    setOptionGroups(optionGroups.map(g => g.id === groupId ? { ...g, expanded: !g.expanded } : g));
+  };
+
+  // NUEVO: Funciones para valores
+  const handleAddValue = (groupId: string) => {
+    if (!newValueName.trim()) {
+      setValueError('El nombre es obligatorio');
+      return;
+    }
+    setOptionGroups(optionGroups.map(g =>
+      g.id === groupId
+        ? { ...g, values: [...g.values, { id: Date.now().toString(), name: newValueName }] }
+        : g
+    ));
+    setNewValueName('');
+    setValueError('');
+  };
+  const handleDeleteValue = (groupId: string, valueId: string) => {
+    setOptionGroups(optionGroups.map(g =>
+      g.id === groupId ? { ...g, values: g.values.filter(v => v.id !== valueId) } : g
+    ));
+  };
+
+  // NUEVO: Editar opción
+  const handleEditValue = (groupId: string, valueId: string, currentName: string) => {
+    setActiveGroupId(groupId);
+    setEditingValueId(valueId);
+    setEditingValueName(currentName);
+  };
+  const handleSaveEditValue = (groupId: string, valueId: string) => {
+    setOptionGroups(optionGroups.map(g =>
+      g.id === groupId
+        ? { ...g, values: g.values.map(v => v.id === valueId ? { ...v, name: editingValueName } : v) }
+        : g
+    ));
+    setEditingValueId(null);
+    setEditingValueName('');
+  };
+
+  const handleSubmitWithOptionsValidation = (data: ProductFormData) => {
+    // Si hay grupos, todos deben tener al menos una opción
+    if (optionGroups.length > 0 && optionGroups.some(g => g.values.length === 0)) {
+      alert('Todos los grupos deben tener al menos una opción.');
+      return;
+    }
+    // Transformar category -> categoryId y optionGroups -> clientOptions
+    const payload = {
+      ...data,
+      categoryId: data.category,
+      clientOptions: optionGroups.map(group => ({
+        name: group.name,
+        type: group.type,
+        values: group.values.map(v => ({ name: v.name })),
+      })),
+    };
+    delete payload.category;
+    onSubmit(payload);
+  };
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit(handleSubmitWithOptionsValidation)} className="space-y-4">
       {/* Tabs */}
       <div className="flex border-b mb-4">
         {TABS.map(tab => (
@@ -238,45 +390,152 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSubmit, onCancel, initialDa
         </div>
       )}
       {activeTab === 'content' && (
-        <div className="flex justify-center py-8">
-          <Button type="button" variant="primary" onClick={handleOpenContentModal}>
-            Agregar contenido del producto
-          </Button>
-          <Modal
-            isOpen={isContentModalOpen}
-            onClose={handleCloseContentModal}
-            title="Agregar contenido del producto"
-            size="sm"
-          >
-            <form onSubmit={handleCreateContent} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Nombre del contenido</label>
-                <Input
-                  value={contentName}
-                  onChange={e => setContentName(e.target.value)}
-                  placeholder="Ej: Salsa extra, Guarnición, etc."
-                />
+        <div className="space-y-6">
+          {/* Botón para agregar grupo */}
+          <div className="flex gap-2 mb-2 items-end">
+            <div className="flex flex-col flex-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del grupo</label>
+              <Input
+                value={newGroupName}
+                onChange={e => setNewGroupName(e.target.value)}
+                placeholder="Nombre del grupo (ej: Salsas)"
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddGroup(); } }}
+              />
+              <div className="flex items-center gap-4 mt-2">
+                <label className="flex items-center text-xs">
+                  <input
+                    type="radio"
+                    name="newGroupType"
+                    value="complementaria"
+                    checked={newGroupType === 'complementaria'}
+                    onChange={() => setNewGroupType('complementaria')}
+                    className="form-radio"
+                  />
+                  <span className="ml-1">Complementaria</span>
+                </label>
+                <label className="flex items-center text-xs">
+                  <input
+                    type="radio"
+                    name="newGroupType"
+                    value="extraible"
+                    checked={newGroupType === 'extraible'}
+                    onChange={() => setNewGroupType('extraible')}
+                    className="form-radio"
+                  />
+                  <span className="ml-1">Extraíble</span>
+                </label>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Tipo de contenido</label>
-                <select
-                  className="input"
-                  value={contentType}
-                  onChange={e => setContentType(e.target.value)}
-                >
-                  <option value="">Selecciona un tipo</option>
-                  <option value="opcion_complementaria">Opción complementaria</option>
-                  <option value="opcion_extraible">Opción extraíble</option>
-                </select>
+              <Button type="button" variant="primary" className="mt-3 w-fit" onClick={handleAddGroup}>Agregar grupo</Button>
+            </div>
+          </div>
+          {groupError && <p className="text-sm text-red-600 mb-2">{groupError}</p>}
+          {/* Grupos de opciones tipo acordeón */}
+          <div className="space-y-4">
+            {optionGroups.map(group => (
+              <div key={group.id} className="border rounded-lg bg-white">
+                <div className="flex items-center justify-between px-4 py-2 border-b">
+                  <button type="button" className="focus:outline-none" onClick={() => handleToggleGroup(group.id)}>
+                    <span className={`inline-block transform transition-transform ${group.expanded ? 'rotate-90' : ''}`}>▶</span>
+                  </button>
+                  {editingGroupId === group.id ? (
+                    <>
+                      <Input
+                        value={editingGroupName}
+                        onChange={e => setEditingGroupName(e.target.value)}
+                        className="mr-2"
+                      />
+                      <div className="flex items-center gap-2">
+                        <label className="flex items-center text-xs">
+                          <input
+                            type="radio"
+                            name={`editGroupType-${group.id}`}
+                            value="complementaria"
+                            checked={editingGroupType === 'complementaria'}
+                            onChange={() => setEditingGroupType('complementaria')}
+                            className="form-radio"
+                          />
+                          <span className="ml-1">Complementaria</span>
+                        </label>
+                        <label className="flex items-center text-xs">
+                          <input
+                            type="radio"
+                            name={`editGroupType-${group.id}`}
+                            value="extraible"
+                            checked={editingGroupType === 'extraible'}
+                            onChange={() => setEditingGroupType('extraible')}
+                            className="form-radio"
+                          />
+                          <span className="ml-1">Extraíble</span>
+                        </label>
+                      </div>
+                      <Button type="button" variant="outline" size="sm" onClick={() => handleSaveEditGroup(group.id)}>Guardar</Button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-semibold text-primary-700 flex-1 text-center cursor-pointer" onClick={() => handleToggleGroup(group.id)}>
+                        {group.name} <span className="ml-2 text-xs px-2 py-1 rounded-full bg-gray-200 text-gray-700">{group.type === 'complementaria' ? 'Complementaria' : 'Extraíble'}</span>
+                      </span>
+                      <div className="flex gap-2">
+                        <Button type="button" variant="outline" size="sm" onClick={() => handleEditGroup(group.id)}>
+                          <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a4 4 0 01-2.828 1.172H7v-2a4 4 0 011.172-2.828z" /></svg>
+                        </Button>
+                        <Button type="button" variant="danger" size="sm" onClick={() => handleDeleteGroup(group.id)} className="bg-red-600 hover:bg-red-700 p-1 rounded">
+                          <TrashIcon className="h-4 w-4 text-white" />
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </div>
+                {group.expanded && (
+                  <div className="p-4 space-y-2">
+                    {/* Lista de opciones */}
+                    <ul className="space-y-1">
+                      {group.values.map(value => (
+                        <li key={value.id} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                          {editingValueId === value.id ? (
+                            <>
+                              <Input
+                                value={editingValueName}
+                                onChange={e => setEditingValueName(e.target.value)}
+                                className="mr-2"
+                              />
+                              <Button type="button" variant="outline" size="sm" onClick={() => handleSaveEditValue(group.id, value.id)}>Guardar</Button>
+                            </>
+                          ) : (
+                            <>
+                              <span>{value.name}</span>
+                              <div className="flex gap-2">
+                                <Button type="button" variant="outline" size="sm" onClick={() => handleEditValue(group.id, value.id, value.name)}>
+                                  <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a4 4 0 01-2.828 1.172H7v-2a4 4 0 011.172-2.828z" /></svg>
+                                </Button>
+                                <Button type="button" variant="danger" size="sm" onClick={() => handleDeleteValue(group.id, value.id)} className="bg-red-600 hover:bg-red-700 p-1 rounded">
+                                  <TrashIcon className="h-4 w-4 text-white" />
+                                </Button>
+                              </div>
+                            </>
+                          )}
+                        </li>
+                      ))}
+                      {group.values.length === 0 && <li className="text-sm text-gray-500">Aún no hay opciones en este grupo.</li>}
+                    </ul>
+                    {/* Formulario para agregar opción */}
+                    <div className="flex gap-2 mt-2">
+                      <Input
+                        value={activeGroupId === group.id ? newValueName : ''}
+                        onChange={e => {
+                          setActiveGroupId(group.id);
+                          setNewValueName(e.target.value);
+                        }}
+                        placeholder="Nombre de la opción (ej: BBQ, Mostaza)"
+                      />
+                      <Button type="button" variant="primary" onClick={() => { setActiveGroupId(group.id); handleAddValue(group.id); }}>Agregar</Button>
+                    </div>
+                    {valueError && activeGroupId === group.id && <p className="text-sm text-red-600 mb-2">{valueError}</p>}
+                  </div>
+                )}
               </div>
-              {contentError && <p className="text-center text-red-600 text-sm">{contentError}</p>}
-              <div className="flex justify-center">
-                <Button type="submit" variant="primary">
-                  Crear nueva opción
-                </Button>
-              </div>
-            </form>
-          </Modal>
+            ))}
+          </div>
         </div>
       )}
       {activeTab === 'image' && (

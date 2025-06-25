@@ -5,7 +5,7 @@ import Input from '../../components/ui/Input';
 import Modal from '../../components/ui/Modal';
 import ProductForm from '../../components/forms/ProductForm';
 import type { ProductFormData } from '../../types';
-import { createProduct, getProducts, updateProduct, deleteProduct } from '../../services/products';
+import { createProduct, getProducts, updateProduct, deleteProduct, productService } from '../../services/products';
 import { createCategory, getCategories, updateCategory, deleteCategory } from '../../services/categories';
 
 interface Product {
@@ -17,6 +17,14 @@ interface Product {
   stock: number;
   status: 'active' | 'inactive';
   image?: string;
+  barcode?: string;
+  offerPrice?: string;
+  preparationTime?: string;
+  productType?: string;
+  includedItems?: string[];
+  categoryId?: string;
+  imageUrl?: string;
+  clientOptions?: { name: string; type: string; values: { name: string }[] }[];
 }
 
 const Products: React.FC = () => {
@@ -29,6 +37,7 @@ const Products: React.FC = () => {
   const [categories, setCategories] = useState([]);
   const [categoryName, setCategoryName] = useState('');
   const [editingCategory, setEditingCategory] = useState(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -56,9 +65,9 @@ const Products: React.FC = () => {
   }, []);
 
   const handleCreateProduct = async (data: ProductFormData) => {
+    console.log('Creando producto con datos:', data);
     try {
       await createProduct(data);
-      alert('Producto creado exitosamente');
       setIsModalOpen(false);
       await fetchProducts();
     } catch (error) {
@@ -67,12 +76,14 @@ const Products: React.FC = () => {
     }
   };
 
-  const handleOpenModal = () => {
+  const handleOpenModal = async () => {
+    await fetchCategories();
     setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
+    setEditingProduct(null);
   };
 
   const handleOpenCategoryModal = async () => {
@@ -106,9 +117,11 @@ const Products: React.FC = () => {
   });
 
   const handleEditProduct = async (id: string, data: ProductFormData) => {
+    console.log('Editando producto con datos:', data);
     try {
       await updateProduct(id, data);
-      alert('Producto actualizado exitosamente');
+      setIsModalOpen(false);
+      setEditingProduct(null);
       await fetchProducts();
     } catch (error) {
       alert('Error al actualizar el producto');
@@ -126,6 +139,44 @@ const Products: React.FC = () => {
       alert('Error al eliminar el producto');
       console.error(error);
     }
+  };
+
+  function mapProductToFormData(product: Product): ProductFormData {
+    return {
+      id: product.id,
+      name: product.name || '',
+      barcode: product.barcode || '',
+      price: product.price || 0,
+      offerPrice: product.offerPrice || '',
+      description: product.description || '',
+      category: product.categoryId ? String(product.categoryId) : '',
+      preparationTime: product.preparationTime || '',
+      productType: product.productType || 'simple',
+      includedItems: Array.isArray(product.includedItems)
+        ? product.includedItems.map(item => ({
+            itemId: item.itemId ? String(item.itemId) : '',
+            itemName: item.itemName || '',
+            quantity: item.quantity || 1,
+          }))
+        : [],
+      clientOptions: Array.isArray(product.clientOptions)
+        ? product.clientOptions.map(opt => ({
+            name: opt.name || '',
+            type: opt.type || '',
+            values: Array.isArray(opt.values)
+              ? opt.values.map(v => ({ name: v.name || '' }))
+              : [],
+          }))
+        : [],
+      image: product.imageUrl || product.image || undefined,
+    };
+  }
+
+  const handleEditProductClick = async (product: Product) => {
+    await fetchCategories();
+    const fullProduct = await productService.getProductById(product.id);
+    setEditingProduct(mapProductToFormData(fullProduct));
+    setIsModalOpen(true);
   };
 
   if (loading) {
@@ -221,6 +272,7 @@ const Products: React.FC = () => {
                     variant="outline"
                     size="sm"
                     className="flex-1"
+                    onClick={() => handleEditProductClick(product)}
                   >
                     <PencilIcon className="h-4 w-4 mr-1" />
                     Editar
@@ -261,15 +313,27 @@ const Products: React.FC = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
-        title="Crear Nuevo Producto"
+        title={editingProduct ? "Editar Producto" : "Crear Nuevo Producto"}
         size="lg"
       >
-        <ProductForm
-          onSubmit={handleCreateProduct}
-          onCancel={handleCloseModal}
-          onOpenCategoryModal={handleOpenCategoryModal}
-          categories={categories}
-        />
+        {editingProduct ? (
+          <>
+            <ProductForm
+              onSubmit={data => handleEditProduct(editingProduct.id, data)}
+              onCancel={handleCloseModal}
+              onOpenCategoryModal={handleOpenCategoryModal}
+              categories={categories}
+              initialData={editingProduct}
+            />
+          </>
+        ) : (
+          <ProductForm
+            onSubmit={handleCreateProduct}
+            onCancel={handleCloseModal}
+            onOpenCategoryModal={handleOpenCategoryModal}
+            categories={categories}
+          />
+        )}
       </Modal>
 
       {/* Category Modal */}

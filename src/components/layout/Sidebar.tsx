@@ -61,14 +61,14 @@ const adminMenu: SidebarItem[] = [
     icon: <CubeIcon className="h-6 w-6 text-white" />,
   },
   {
-    label: 'Gestión de Usuarios',
-    path: '/users',
-    icon: <UserGroupIcon className="h-6 w-6 text-white" />,
-  },
-  {
     label: 'Inventario',
     path: ROUTES.INVENTORY,
     icon: <ArchiveBoxIcon className="h-6 w-6 text-white" />,
+  },
+  {
+    label: 'Gestión de Usuarios',
+    path: '/users',
+    icon: <UserGroupIcon className="h-6 w-6 text-white" />,
   },
 ];
 

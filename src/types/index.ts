@@ -146,6 +146,7 @@ export interface AppConfig {
 }
 
 export interface ProductFormData {
+  id?: string;
   name: string;
   barcode: string;
   price: number;
@@ -158,6 +159,11 @@ export interface ProductFormData {
     itemId: string;
     itemName: string;
     quantity: number;
+  }>;
+  clientOptions?: Array<{
+    name: string;
+    type: string;
+    values: Array<{ name: string }>;
   }>;
   image?: unknown;
 } 
